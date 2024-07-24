@@ -29,7 +29,7 @@ choice = st.sidebar.selectbox("Menu", menu)  # Sidebar menu
 path = 'data'
 images = []
 classNames = []
-myList = os.listdir(path)
+myList = os.listdir(path) if os.path.exists(path) else []
 
 # Login Page
 col1, col2, col3 = st.columns(3)  # Columns
@@ -60,7 +60,8 @@ if choice == 'LOGIN':
 
         # Function to update attendance list
         def face_list(name):
-            with open('absensi.csv', 'r+') as f:
+            with open('absensi.csv', 'a+') as f:
+                f.seek(0)
                 my_data_list = f.readlines()
                 name_list = [line.split(',')[0] for line in my_data_list]
                 if name not in name_list:
@@ -68,7 +69,7 @@ if choice == 'LOGIN':
                     dt_string = now.strftime('%H:%M:%S')
                     f.writelines(f'\n{name},{dt_string}')
 
-        encode_list_unknown = find_encodings(images)
+        encode_list_known = find_encodings(images)
         print('Encoding complete!')
 
         # Capture frames from camera and detect faces
@@ -84,15 +85,15 @@ if choice == 'LOGIN':
             encode_cur_frame = face_recognition.face_encodings(img_s, face_cur_frame)
 
             for encode_face, face_loc in zip(encode_cur_frame, face_cur_frame):
-                matches = face_recognition.compare_faces(encode_list_unknown, encode_face)
-                face_dis = face_recognition.face_distance(encode_list_unknown, encode_face)
-                matches_index = np.argmin(face_dis)
+                matches = face_recognition.compare_faces(encode_list_known, encode_face)
+                face_dis = face_recognition.face_distance(encode_list_known, encode_face)
+                match_index = np.argmin(face_dis)
 
                 y1, x2, y2, x1 = face_loc
                 y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
 
-                if matches[matches_index]:
-                    name = classNames[matches_index].upper()
+                if matches[match_index]:
+                    name = classNames[match_index].upper()
                     print(name)
                     cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     cv2.rectangle(img, (x1, y2 - 35), (x2, y2), (0, 255, 0), cv2.FILLED)
@@ -124,16 +125,21 @@ elif choice == 'REGISTER':
         file_details = {"FileName": image_file.name, "FileType": image_file.type}
         st.write(file_details)
         img = load_image(image_file)
-        with open(os.path.join("data", image_file.name), "wb") as f: 
+        if not os.path.exists(path):
+            os.makedirs(path)
+        with open(os.path.join(path, image_file.name), "wb") as f: 
             f.write(image_file.getbuffer())         
         st.success("Saved File")
 
 # Read data menu
 elif choice == 'DATA':
     with col2:
-        df = pd.read_csv('absensi.csv')
-        st.subheader("READ DATA")
-        st.write(df)
+        if os.path.exists('absensi.csv'):
+            df = pd.read_csv('absensi.csv')
+            st.subheader("READ DATA")
+            st.write(df)
+        else:
+            st.warning("No attendance data found.")
 
 elif choice == 'HOME':
     st.subheader("Machine Learning Face Recognition with HOG Method")
@@ -152,3 +158,7 @@ elif choice == 'HOME':
 
     Yoga Ari Nugroho 21.11.4128
     """)
+
+# Release the video capture object
+cap.release()
+cv2.destroyAllWindows()
