@@ -6,3 +6,4 @@ numpy==2.0.1
 cmake==3.30.1
 Pillow==10.4.0
 dlib==19.24.2
+setuptools==71.1.0
